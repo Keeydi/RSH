@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "RHS ArchAID",
+    "slug": "rhs-archaid",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourapp.mobile",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs location access to show your position on the school map.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to show your position on the school map.",
+        "NSCameraUsageDescription": "This app needs camera access to use the flashlight feature for emergency signaling."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "INTERNET"
+      ]
+    }
+  }
+}

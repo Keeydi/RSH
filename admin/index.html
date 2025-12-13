@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RHS ArchAID - Admin Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f9fafb;
+            color: #1f2937;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: white;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .sidebar-header p {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 1rem 0;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .nav-item.active {
+            background: #FFF4F0;
+            color: #FF4500;
+            border-left-color: #FF4500;
+            font-weight: 600;
+        }
+
+        .nav-item-icon {
+            font-size: 1.25rem;
+            margin-right: 0.75rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Header Bar */
+        .top-header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .profile-dropdown {
+            position: relative;
+        }
+
+        .profile-button {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .profile-button:hover {
+            background: #e5e7eb;
+        }
+
+        .profile-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FF4500 0%, #E63900 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .profile-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .profile-role {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .dropdown-arrow {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            right: 0;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #1f2937;
+        }
+
+        .dropdown-item:hover {
+            background: #f3f4f6;
+        }
+
+        .dropdown-item:first-child {
+            border-radius: 0.5rem 0.5rem 0 0;
+        }
+
+        .dropdown-item:last-child {
+            border-radius: 0 0 0.5rem 0.5rem;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 0.25rem 0;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .stats-container {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            width: 100%;
+        }
+
+        @media (max-width: 1200px) {
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .map-container {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            position: relative;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #1f2937; /* text-gray-800 */
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+        }
+
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-left: 4px solid #FF4500; /* Logo orange-red */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .stat-card.active {
+            border-left-color: #ef4444; /* red-500 */
+        }
+
+        .stat-card.resolved {
+            border-left-color: #10b981; /* green-500 */
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .request-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }
+
+        .request-item {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .request-item:hover {
+            border-color: #FF4500; /* Logo orange-red */
+            background: #eff6ff;
+        }
+
+        .request-item.active {
+            border: 2px solid #ef4444; /* red-500 */
+            background: #fef2f2;
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.5rem;
+        }
+
+        .request-name {
+            font-weight: 700;
+            color: #1f2937; /* text-gray-800 */
+            font-size: 0.875rem;
+        }
+
+        .request-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #fee2e2; /* red-100 */
+            color: #991b1b; /* red-800 */
+        }
+
+        .status-responded {
+            background: #fef3c7; /* yellow-100 */
+            color: #92400e; /* yellow-800 */
+        }
+
+        .status-resolved {
+            background: #d1fae5; /* green-100 */
+            color: #065f46; /* green-800 */
+        }
+
+        .request-time {
+            font-size: 0.75rem;
+            color: #6b7280; /* text-gray-500 */
+            margin-top: 0.25rem;
+        }
+
+        .request-location {
+            font-size: 0.75rem;
+            color: #6b7280; /* text-gray-500 */
+            margin-top: 0.25rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #FF4500; /* Logo orange-red */
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #E63900; /* Logo red */
+        }
+
+        .btn-success {
+            background: #10b981; /* green-500 */
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669; /* green-600 */
+        }
+
+        .btn-danger {
+            background: #ef4444; /* red-500 */
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626; /* red-600 */
+        }
+
+        .btn-small {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #2563eb; /* blue-600 matching mobile */
+        }
+
+        .login-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-box h2 {
+            margin-bottom: 1.5rem;
+            color: #1f2937;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #2563EB; /* Logo blue */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+            opacity: 0.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+        }
+
+        .user-info {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .user-info strong {
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container" style="display: none;">
+        <div class="login-box">
+            <h2>Admin Login</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+            </form>
+            <div id="loginError" style="color: #ef4444; margin-top: 1rem; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" style="display: none;">
+        <div class="app-container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <h2>🏫 RHS ArchAID</h2>
+                    <p>Admin Dashboard</p>
+                </div>
+                <div class="sidebar-nav">
+                    <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
+                        <span class="nav-item-icon">📊</span>
+                        <span>Dashboard</span>
+                    </div>
+                    <div class="nav-item" onclick="showPage('requests')" data-page="requests">
+                        <span class="nav-item-icon">🚨</span>
+                        <span>Emergency Requests</span>
+                    </div>
+                    <div class="nav-item" onclick="showPage('users')" data-page="users">
+                        <span class="nav-item-icon">👥</span>
+                        <span>Users</span>
+                    </div>
+                    <div class="nav-item" onclick="showPage('map')" data-page="map">
+                        <span class="nav-item-icon">🗺️</span>
+                        <span>Map View</span>
+                    </div>
+                    <div class="nav-item" onclick="showPage('settings')" data-page="settings">
+                        <span class="nav-item-icon">⚙️</span>
+                        <span>Settings</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Top Header Bar -->
+                <div class="top-header">
+                    <div class="header-title" id="pageTitle">Dashboard</div>
+                    <div class="header-actions">
+                        <div class="profile-dropdown">
+                            <div class="profile-button" onclick="toggleDropdown()">
+                                <div class="profile-avatar" id="profileAvatar">A</div>
+                                <div class="profile-info">
+                                    <div class="profile-name" id="profileName">Admin</div>
+                                    <div class="profile-role">Administrator</div>
+                                </div>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                            <div class="dropdown-menu" id="profileDropdown">
+                                <div class="dropdown-item" onclick="showPage('profile')">
+                                    <span>👤</span>
+                                    <span>Profile Settings</span>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-item" onclick="logout()" style="color: #ef4444;">
+                                    <span>🚪</span>
+                                    <span>Logout</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content Area -->
+                <div class="content-area">
+                    <!-- Dashboard Page -->
+                    <div class="page active" id="page-dashboard">
+                        <!-- KPI Cards - Single Row -->
+                        <div class="section-title">📊 Key Performance Indicators</div>
+                        <div class="stats-container">
+                            <div class="stat-card active">
+                                <div class="stat-label">ACTIVE</div>
+                                <div class="stat-number" id="activeCount">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">TOTAL</div>
+                                <div class="stat-number" id="totalCount">0</div>
+                            </div>
+                            <div class="stat-card resolved">
+                                <div class="stat-label">RESOLVED</div>
+                                <div class="stat-number" id="resolvedCount">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">TOTAL USERS</div>
+                                <div class="stat-number" id="userCount">0</div>
+                            </div>
+                        </div>
+
+                        <!-- Analytics Section -->
+                        <div class="section-title" style="margin-top: 2rem;">📈 Analytics</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                            <!-- User Statistics -->
+                            <div class="request-item" style="padding: 1.5rem;">
+                                <div class="request-name" style="font-size: 1rem; margin-bottom: 1rem;">👥 User Statistics</div>
+                                <div id="userStats" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280;">Total Users:</span>
+                                        <strong id="totalUsers">0</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280;">Students:</span>
+                                        <strong id="studentCount" style="color: #10b981;">0</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280;">Teachers:</span>
+                                        <strong id="teacherCount" style="color: #FF4500;">0</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280;">Admins:</span>
+                                        <strong id="adminCount" style="color: #8b5cf6;">0</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                                        <span style="color: #6b7280;">Members:</span>
+                                        <strong id="memberCount" style="color: #6b7280;">0</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Request Statistics -->
+                            <div class="request-item" style="padding: 1.5rem;">
+                                <div class="request-name" style="font-size: 1rem; margin-bottom: 1rem;">🚨 Request Statistics</div>
+                                <div id="requestStats" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280;">Total Requests:</span>
+                                        <strong id="totalRequests">0</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280;">Active:</span>
+                                        <strong id="activeRequests" style="color: #ef4444;">0</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280;">Responded:</span>
+                                        <strong id="respondedCount" style="color: #facc15;">0</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e5e7eb;">
+                                        <span style="color: #6b7280;">Resolved:</span>
+                                        <strong id="resolvedRequests" style="color: #10b981;">0</strong>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                                        <span style="color: #6b7280;">This Week:</span>
+                                        <strong id="weekRequests">0</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="section-title">🕐 Recent Activity</div>
+                        <div id="requestList" class="request-list">
+                            <div class="loading">Loading requests...</div>
+                        </div>
+                    </div>
+
+                    <!-- Requests Page -->
+                    <div class="page" id="page-requests">
+                        <div class="section-title">🚨 Emergency Requests</div>
+                        <div id="requestListPage" class="request-list">
+                            <div class="loading">Loading requests...</div>
+                        </div>
+                    </div>
+
+                    <!-- Users Page -->
+                    <div class="page" id="page-users">
+                        <div class="section-title">👥 All Users</div>
+                        <div id="userList" class="request-list">
+                            <div class="loading">Loading users...</div>
+                        </div>
+                    </div>
+
+                    <!-- Map Page -->
+                    <div class="page" id="page-map" style="padding: 0; height: 100%;">
+                        <div class="map-container" style="height: calc(100vh - 120px); border-radius: 0;">
+                            <div id="map"></div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Page -->
+                    <div class="page" id="page-settings">
+                        <div class="section-title">⚙️ Settings</div>
+                        <div class="request-item">
+                            <div class="request-name">Notification Preferences</div>
+                            <div class="request-time">Manage how you receive notifications</div>
+                        </div>
+                        <div class="request-item">
+                            <div class="request-name">Map Settings</div>
+                            <div class="request-time">Configure map display options</div>
+                        </div>
+                        <div class="request-item">
+                            <div class="request-name">System Preferences</div>
+                            <div class="request-time">General system settings</div>
+                        </div>
+                    </div>
+
+                    <!-- Profile Page -->
+                    <div class="page" id="page-profile">
+                        <div class="section-title">👤 Profile Settings</div>
+                        <div class="request-item">
+                            <div class="request-name">Email</div>
+                            <div class="request-time" id="profileEmail">-</div>
+                        </div>
+                        <div class="request-item">
+                            <div class="request-name">Full Name</div>
+                            <div class="request-time" id="profileFullName">-</div>
+                        </div>
+                        <div class="request-item">
+                            <div class="request-name">Role</div>
+                            <div class="request-time">Administrator</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://yatiljvrbvnkxkkgsjyg.supabase.co';
+        // Supabase Anon Key (public key - safe for client-side use)
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhdGlsanZyYnZua3hra2dzanlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1Njc3OTAsImV4cCI6MjA4MTE0Mzc5MH0._a9t0HCmL8qCyok4MLlAOgXWj7i8FDRdkoe5YoPCVII';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let map;
+        let markers = {};
+        let currentUser = null;
+        const SCHOOL_LOCATION = [14.5683, 121.0753]; // Rizal High School
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+            setupLoginForm();
+        });
+
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                await verifyAdmin(session.user);
+            } else {
+                showLogin();
+            }
+        }
+
+        async function verifyAdmin(user) {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            if (error || !data || data.role !== 'admin') {
+                alert('Access denied. Admin privileges required.');
+                await supabase.auth.signOut();
+                showLogin();
+                return;
+            }
+
+            currentUser = user;
+            showDashboard();
+            setupRealtime();
+            
+            // Set profile info
+            const email = user.email || '';
+            const name = user.user_metadata?.full_name || email.split('@')[0] || 'A';
+            const profileNameEl = document.getElementById('profileName');
+            const profileEmailEl = document.getElementById('profileEmail');
+            const profileAvatarEl = document.getElementById('profileAvatar');
+            
+            if (profileNameEl) profileNameEl.textContent = name;
+            if (profileEmailEl) profileEmailEl.textContent = email;
+            if (profileAvatarEl) profileAvatarEl.textContent = name.charAt(0).toUpperCase();
+            
+            // Load initial data
+            loadData();
+            
+            // Initialize map if on map page
+            if (document.getElementById('page-map').classList.contains('active')) {
+                setTimeout(() => {
+                    initializeMap();
+                    loadEmergencyRequests();
+                }, 100);
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+        }
+
+        function showDashboard() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            // Profile info is set in verifyAdmin function
+        }
+
+        function setupLoginForm() {
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const errorDiv = document.getElementById('loginError');
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                errorDiv.style.display = 'none';
+                
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Logging in...';
+
+                try {
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    });
+
+                    if (error) {
+                        let errorMsg = `Login failed: ${error.message}`;
+                        if (error.message.includes('Invalid login credentials')) {
+                            errorMsg += '\n\nPossible issues:\n';
+                            errorMsg += '1. User does not exist - Create in Supabase Auth Dashboard\n';
+                            errorMsg += '2. Email not confirmed - Run confirm_admin_email.sql\n';
+                            errorMsg += '3. Wrong password - Check password is correct\n';
+                            errorMsg += '\nCheck: database/debug_and_fix_admin.sql';
+                        }
+                        errorDiv.textContent = errorMsg;
+                        errorDiv.style.display = 'block';
+                        errorDiv.style.whiteSpace = 'pre-line';
+                        console.error('Login error:', error);
+                    } else {
+                        await verifyAdmin(data.user);
+                    }
+                } catch (err) {
+                    errorDiv.textContent = `Error: ${err.message}`;
+                    errorDiv.style.display = 'block';
+                    console.error('Login error:', err);
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Login';
+                }
+            });
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            showLogin();
+            if (map) {
+                map.remove();
+                map = null;
+            }
+            markers = {};
+        }
+
+        function initializeMap() {
+            // School campus bounds - restrict map to school area only (±0.005 degrees ≈ 500m radius)
+            const SCHOOL_BOUNDS = [[14.5633, 121.0703], [14.5733, 121.0803]];
+            
+            map = L.map('map', {
+                center: SCHOOL_LOCATION,
+                zoom: 17,
+                maxBounds: SCHOOL_BOUNDS,
+                maxBoundsViscosity: 1.0, // Prevent panning outside bounds
+                minZoom: 15, // Prevent zooming out too far
+                maxZoom: 20
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 20,
+                minZoom: 15
+            }).addTo(map);
+
+            // Restrict map to school campus bounds
+            map.setMaxBounds(SCHOOL_BOUNDS);
+
+            // Add school marker
+            L.marker(SCHOOL_LOCATION, {
+                icon: L.divIcon({
+                    className: 'school-marker',
+                    html: '<div style="background: #8B5CF6; color: white; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border: 4px solid white; font-size: 26px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">🏫</div>',
+                    iconSize: [50, 50]
+                })
+            }).bindPopup('<b>Rizal High School</b><br>H39G+94H, Dr. Sixto Antonio Ave., Pasig<br><small style="color: #6B7280;">Map restricted to school campus area</small>').addTo(map);
+        }
+
+        async function loadData() {
+            await Promise.all([
+                loadEmergencyRequests(),
+                updateUserStats(),
+                loadAllUsers()
+            ]);
+        }
+
+        async function loadAllUsers() {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, full_name, email, role, created_at')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error loading users:', error);
+                return;
+            }
+
+            renderUserList(data || []);
+        }
+
+        function renderUserList(users) {
+            const listDiv = document.getElementById('userList');
+            
+            if (users.length === 0) {
+                listDiv.innerHTML = '<div class="empty-state">No users found</div>';
+                return;
+            }
+
+            listDiv.innerHTML = users.map(user => {
+                const roleColor = user.role === 'admin' ? '#FF4500' : user.role === 'teacher' ? '#2563EB' : user.role === 'student' ? '#10b981' : '#6b7280';
+                const roleBadge = `<span style="background: ${roleColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 600;">${user.role || 'member'}</span>`;
+                
+                return `
+                    <div class="request-item">
+                        <div class="request-header">
+                            <div>
+                                <div class="request-name">${user.full_name || 'No Name'}</div>
+                                <div class="request-time" style="font-size: 0.7rem;">${user.email}</div>
+                            </div>
+                            ${roleBadge}
+                        </div>
+                        <div class="request-location" style="font-size: 0.7rem;">
+                            Joined: ${new Date(user.created_at).toLocaleDateString()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showPage(pageName) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show selected page
+            const pageElement = document.getElementById(`page-${pageName}`);
+            if (pageElement) {
+                pageElement.classList.add('active');
+            }
+            
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-page="${pageName}"]`)?.classList.add('active');
+            
+            // Update page title
+            const titles = {
+                'dashboard': 'Dashboard',
+                'requests': 'Emergency Requests',
+                'users': 'Users',
+                'map': 'Map View',
+                'settings': 'Settings',
+                'profile': 'Profile Settings'
+            };
+            document.getElementById('pageTitle').textContent = titles[pageName] || 'Dashboard';
+            
+            // Load data if needed
+            if (pageName === 'requests' || pageName === 'dashboard') {
+                loadEmergencyRequests();
+            } else if (pageName === 'users') {
+                loadAllUsers();
+            } else if (pageName === 'map') {
+                if (!map) {
+                    initializeMap();
+                }
+                // Always reload requests when viewing map to update markers
+                loadEmergencyRequests();
+            } else if (pageName === 'profile') {
+                loadProfile();
+            }
+        }
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('profileDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('profileDropdown');
+            const button = document.querySelector('.profile-button');
+            if (!button.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        function loadProfile() {
+            if (currentUser) {
+                document.getElementById('profileEmail').textContent = currentUser.email;
+                document.getElementById('profileFullName').textContent = currentUser.user_metadata?.full_name || 'Admin User';
+            }
+        }
+
+        async function loadEmergencyRequests() {
+            try {
+                const { data, error } = await supabase
+                    .from('emergency_requests')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (error) {
+                    console.error('Error loading requests:', error);
+                    
+                    // Check if table doesn't exist
+                    if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
+                        console.warn('Emergency requests table not found. Please run database/emergency_requests.sql');
+                        const listDiv = document.getElementById('requestList');
+                        const listDivPage = document.getElementById('requestListPage');
+                        const emptyMsg = `
+                            <div class="empty-state" style="padding: 2rem; text-align: center;">
+                                <h3 style="color: #dc2626; margin-bottom: 1rem;">⚠️ Database Table Not Found</h3>
+                                <p style="margin-bottom: 1.5rem; color: #6b7280;">
+                                    The <code>emergency_requests</code> table needs to be created in your Supabase database.
+                                </p>
+                                <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; text-align: left;">
+                                    <p style="margin-bottom: 0.5rem; font-weight: 600;">Quick Fix Steps:</p>
+                                    <ol style="margin-left: 1.5rem; color: #374151;">
+                                        <li style="margin-bottom: 0.5rem;">Open <a href="https://supabase.com/dashboard/project/wekstuztpuuiqkkwpufs/sql/new" target="_blank" style="color: #FF4500; text-decoration: underline;">Supabase SQL Editor</a></li>
+                                        <li style="margin-bottom: 0.5rem;">Open <code>database/emergency_requests.sql</code> file</li>
+                                        <li style="margin-bottom: 0.5rem;">Copy all SQL code and paste into SQL Editor</li>
+                                        <li style="margin-bottom: 0.5rem;">Click "Run" button (or press Ctrl+Enter)</li>
+                                        <li>Refresh this page</li>
+                                    </ol>
+                                </div>
+                                <button onclick="location.reload()" style="background: #FF4500; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+                                    ↻ Refresh After Running SQL
+                                </button>
+                            </div>
+                        `;
+                        if (listDiv) listDiv.innerHTML = emptyMsg;
+                        if (listDivPage) listDivPage.innerHTML = emptyMsg;
+                        return;
+                    }
+                    return;
+                }
+
+                updateStats(data || []);
+                renderRequestList(data || []);
+                
+                // Update map markers if map is initialized
+                if (map) {
+                    updateMapMarkers(data || []);
+                }
+            } catch (err) {
+                console.error('Error in loadEmergencyRequests:', err);
+            }
+        }
+
+
+        function updateStats(requests) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            
+            const todayRequests = requests.filter(r => new Date(r.created_at) >= today);
+            const weekRequests = requests.filter(r => new Date(r.created_at) >= weekAgo);
+
+            const active = requests.filter(r => r.status === 'active').length;
+            const responded = requests.filter(r => r.status === 'responded').length;
+            const resolved = requests.filter(r => r.status === 'resolved').length;
+
+            // Update KPI cards
+            document.getElementById('activeCount').textContent = active;
+            document.getElementById('totalCount').textContent = todayRequests.length;
+            document.getElementById('resolvedCount').textContent = resolved;
+
+            // Update Request Statistics
+            document.getElementById('totalRequests').textContent = requests.length;
+            document.getElementById('activeRequests').textContent = active;
+            document.getElementById('respondedCount').textContent = responded;
+            document.getElementById('resolvedRequests').textContent = resolved;
+            document.getElementById('weekRequests').textContent = weekRequests.length;
+        }
+
+        async function updateUserStats() {
+            const { data: users, error } = await supabase
+                .from('profiles')
+                .select('role');
+
+            if (error) {
+                console.error('Error loading user stats:', error);
+                return;
+            }
+
+            const stats = {
+                total: users?.length || 0,
+                student: users?.filter(u => u.role === 'student').length || 0,
+                teacher: users?.filter(u => u.role === 'teacher').length || 0,
+                admin: users?.filter(u => u.role === 'admin').length || 0,
+                member: users?.filter(u => u.role === 'member' || !u.role).length || 0,
+            };
+
+            document.getElementById('totalUsers').textContent = stats.total;
+            document.getElementById('studentCount').textContent = stats.student;
+            document.getElementById('teacherCount').textContent = stats.teacher;
+            document.getElementById('adminCount').textContent = stats.admin;
+            document.getElementById('memberCount').textContent = stats.member;
+            document.getElementById('userCount').textContent = stats.total;
+        }
+
+        function renderRequestList(requests) {
+            const listDiv = document.getElementById('requestList');
+            const listDivPage = document.getElementById('requestListPage');
+            const targetDiv = listDivPage || listDiv;
+            
+            if (requests.length === 0) {
+                if (listDiv) listDiv.innerHTML = '<div class="empty-state">No emergency requests</div>';
+                if (listDivPage) listDivPage.innerHTML = '<div class="empty-state">No emergency requests</div>';
+                return;
+            }
+
+            const html = requests.map(request => {
+                const timeAgo = getTimeAgo(new Date(request.created_at));
+                const statusClass = `status-${request.status}`;
+                
+                return `
+                    <div class="request-item ${request.status === 'active' ? 'active' : ''}" 
+                         onclick="focusOnRequest('${request.id}')"
+                         data-id="${request.id}">
+                        <div class="request-header">
+                            <div>
+                                <div class="request-name">${request.user_name || 'Unknown User'}</div>
+                                <div class="request-time">${timeAgo}</div>
+                            </div>
+                            <span class="request-status ${statusClass}">${request.status}</span>
+                        </div>
+                        <div class="request-location">
+                            📍 ${request.latitude.toFixed(6)}, ${request.longitude.toFixed(6)}
+                        </div>
+                        ${request.message ? `<div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem;">${request.message}</div>` : ''}
+                        ${request.status === 'active' ? `
+                            <div class="actions">
+                                <button class="btn btn-success btn-small" onclick="markResponded('${request.id}'); event.stopPropagation();">Mark Responded</button>
+                                <button class="btn btn-primary btn-small" onclick="markResolved('${request.id}'); event.stopPropagation();">Resolve</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            if (listDiv) listDiv.innerHTML = html;
+            if (listDivPage) listDivPage.innerHTML = html;
+        }
+
+        function addMarkerToMap(request) {
+            if (!map || !request.latitude || !request.longitude) return;
+            
+            // Remove existing marker if it exists
+            if (markers[request.id]) {
+                map.removeLayer(markers[request.id]);
+            }
+            
+            let iconHtml, iconSize, statusColor;
+            
+            if (request.status === 'active') {
+                iconHtml = `<div style="background: #EF4444; color: white; border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border: 3px solid white; font-size: 22px; box-shadow: 0 4px 8px rgba(0,0,0,0.4); animation: pulse 2s infinite;">🚨</div>`;
+                iconSize = [45, 45];
+                statusColor = '#ef4444';
+            } else if (request.status === 'responded') {
+                iconHtml = `<div style="background: #FACC15; color: #1F2937; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border: 3px solid white; font-size: 18px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">⚠️</div>`;
+                iconSize = [38, 38];
+                statusColor = '#facc15';
+            } else {
+                iconHtml = `<div style="background: #10B981; color: white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border: 3px solid white; font-size: 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">✓</div>`;
+                iconSize = [35, 35];
+                statusColor = '#10b981';
+            }
+            
+            const marker = L.marker([request.latitude, request.longitude], {
+                icon: L.divIcon({
+                    className: 'emergency-marker',
+                    html: iconHtml,
+                    iconSize: iconSize
+                })
+            }).bindPopup(`
+                <div style="min-width: 200px;">
+                    <b style="font-size: 16px;">${request.user_name || 'Unknown User'}</b><br>
+                    <span style="color: ${statusColor}; font-weight: bold;">Status: ${request.status.toUpperCase()}</span><br>
+                    <small>Time: ${new Date(request.created_at).toLocaleString()}</small><br>
+                    ${request.message ? `<p style="margin: 8px 0; font-size: 13px;">${request.message}</p>` : ''}
+                    ${request.status === 'active' ? `
+                        <button class="btn btn-success btn-small" onclick="markResponded('${request.id}')" style="margin-top: 0.5rem; width: 100%;">Mark Responded</button>
+                        <button class="btn btn-primary btn-small" onclick="markResolved('${request.id}')" style="margin-top: 0.25rem; width: 100%;">Resolve</button>
+                    ` : ''}
+                </div>
+            `);
+            
+            marker.addTo(map);
+            markers[request.id] = marker;
+            
+            // Add pulse animation for active requests
+            if (request.status === 'active') {
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes pulse {
+                        0%, 100% { transform: scale(1); opacity: 1; }
+                        50% { transform: scale(1.1); opacity: 0.8; }
+                    }
+                `;
+                if (!document.getElementById('pulse-animation')) {
+                    style.id = 'pulse-animation';
+                    document.head.appendChild(style);
+                }
+            }
+        }
+
+        function updateMapMarkers(requests) {
+            if (!map) return;
+            
+            // Clear existing markers
+            Object.values(markers).forEach(marker => map.removeLayer(marker));
+            markers = {};
+
+            // Add markers for each request
+            requests.forEach(request => {
+                if (request.latitude && request.longitude) {
+                    addMarkerToMap(request);
+                }
+            });
+        }
+
+        function focusOnRequest(id) {
+            const request = document.querySelector(`[data-id="${id}"]`);
+            if (request && markers[id]) {
+                map.setView(markers[id].getLatLng(), 18);
+                markers[id].openPopup();
+            }
+        }
+
+        async function markResponded(id) {
+            const { error } = await supabase
+                .from('emergency_requests')
+                .update({
+                    status: 'responded',
+                    responded_at: new Date().toISOString(),
+                    responder_id: currentUser.id
+                })
+                .eq('id', id);
+
+            if (!error) {
+                loadData();
+            }
+        }
+
+        async function markResolved(id) {
+            const { error } = await supabase
+                .from('emergency_requests')
+                .update({
+                    status: 'resolved',
+                    resolved_at: new Date().toISOString()
+                })
+                .eq('id', id);
+
+            if (!error) {
+                loadData();
+            }
+        }
+
+        function setupRealtime() {
+            // Real-time subscription for emergency requests
+            supabase
+                .channel('emergency_requests_changes')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'emergency_requests'
+                }, async (payload) => {
+                    console.log('Realtime update:', payload);
+                    
+                    // Reload data immediately when changes occur
+                    await loadEmergencyRequests();
+                    updateUserStats();
+                    
+                    // Show notification for new requests
+                    if (payload.eventType === 'INSERT') {
+                        const request = payload.new;
+                        showNotification(`New emergency request from ${request.user_name || 'Student'}!`, 'info');
+                        
+                        // If map is initialized, add marker immediately and focus on it
+                        if (map && request.latitude && request.longitude) {
+                            addMarkerToMap(request);
+                            // Focus on new request location
+                            map.setView([request.latitude, request.longitude], 16, {
+                                animate: true,
+                                duration: 0.5
+                            });
+                        }
+                    } else if (payload.eventType === 'UPDATE') {
+                        const request = payload.new;
+                        showNotification('Emergency request updated', 'success');
+                        
+                        // Update map marker if status changed
+                        if (map && request.latitude && request.longitude) {
+                            updateMapMarkers([request]);
+                        }
+                    }
+                })
+                .subscribe();
+
+            // Real-time subscription for user changes
+            supabase
+                .channel('profiles_changes')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'profiles'
+                }, (payload) => {
+                    console.log('User update:', payload);
+                    updateUserStats();
+                    if (document.getElementById('page-users').classList.contains('active')) {
+                        loadAllUsers();
+                    }
+                })
+                .subscribe();
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'info' ? '#2563EB' : type === 'success' ? '#10b981' : '#E63900'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+                max-width: 300px;
+            `;
+            notification.textContent = message;
+            
+            // Add animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => {
+                    notification.remove();
+                    style.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'Just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
+        }
+    </script>
+</body>
+</html>
+
