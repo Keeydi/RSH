@@ -53,3 +53,4 @@ ORDER BY created_at DESC;
 -- If you see profiles, refresh your Supabase Table Editor.
 -- ============================================================================
 
+

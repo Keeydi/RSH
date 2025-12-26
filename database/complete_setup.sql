@@ -407,3 +407,4 @@ GRANT EXECUTE ON FUNCTION public.get_latest_otp TO anon, authenticated;
 -- ============================================================================
 
 
+

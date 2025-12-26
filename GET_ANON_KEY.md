@@ -36,3 +36,4 @@ Once you've updated both files with the correct anon key:
 3. The 401 authentication error should be resolved
 
 
+
