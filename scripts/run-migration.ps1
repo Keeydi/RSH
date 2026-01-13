@@ -1,10 +1,10 @@
-# Emergency Requests Migration Runner (PowerShell)
-# Opens Supabase SQL Editor with migration ready to run
+# Database Migration Runner (PowerShell)
+# Opens Supabase SQL Editor with complete database setup ready to run
 
-Write-Host "Emergency Requests Migration Runner" -ForegroundColor Cyan
+Write-Host "Database Migration Runner" -ForegroundColor Cyan
 Write-Host ""
 
-$sqlFile = Join-Path $PSScriptRoot "..\database\emergency_requests.sql"
+$sqlFile = Join-Path $PSScriptRoot "..\database\database.sql"
 
 if (-not (Test-Path $sqlFile)) {
     Write-Host "ERROR: SQL file not found: $sqlFile" -ForegroundColor Red

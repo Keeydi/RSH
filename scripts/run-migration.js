@@ -2,7 +2,7 @@
 
 /**
  * Migration Runner Script
- * Runs database/emergency_requests.sql migration in Supabase
+ * Runs database/database.sql (complete database setup) in Supabase
  * 
  * Usage:
  *   node scripts/run-migration.js
@@ -19,10 +19,10 @@ const SUPABASE_URL = 'https://yatiljvrbvnkxkkgsjyg.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Read SQL file
-const sqlFilePath = path.join(__dirname, '..', 'database', 'emergency_requests.sql');
+const sqlFilePath = path.join(__dirname, '..', 'database', 'database.sql');
 const sql = fs.readFileSync(sqlFilePath, 'utf8');
 
-console.log('🚀 Emergency Requests Migration Runner\n');
+console.log('🚀 Database Migration Runner\n');
 console.log('SQL File:', sqlFilePath);
 console.log('SQL Length:', sql.length, 'characters\n');
 

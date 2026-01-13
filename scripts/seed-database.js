@@ -7,12 +7,13 @@
  * Usage:
  *   node scripts/seed-database.js
  * 
- * This script will run all SQL files in the correct order:
- * 1. setup.sql - Core tables and functions
- * 2. emergency_contacts.sql - Emergency contacts table
- * 3. emergency_requests.sql - Emergency requests table
- * 4. otp_setup.sql - OTP configuration
- * 5. seed_admin_account.sql - Admin user setup (optional)
+ * This script runs the complete database setup from database.sql which includes:
+ * - Extensions setup
+ * - Profiles table with RLS policies
+ * - Emergency contacts table with triggers
+ * - Emergency requests table with admin policies
+ * - OTP codes table with functions
+ * - Utility functions for fixing profiles and setting admin users
  */
 
 const fs = require('fs');
@@ -23,14 +24,8 @@ const { Client } = require('pg');
 // Note: Password is URL-encoded (special characters encoded)
 const DATABASE_URL = 'postgresql://postgres:Karldarn25%21@db.yatiljvrbvnkxkkgsjyg.supabase.co:5432/postgres';
 
-// SQL files to run in order
-const SQL_FILES = [
-  'setup.sql',
-  'emergency_contacts.sql',
-  'emergency_requests.sql',
-  'otp_setup.sql',
-  // 'seed_admin_account.sql', // Uncomment if you want to seed admin account
-];
+// SQL file to run (consolidated complete setup)
+const SQL_FILE = 'database.sql';
 
 const client = new Client({
   connectionString: DATABASE_URL,
@@ -74,36 +69,29 @@ async function main() {
     await client.connect();
     console.log('✅ Connected to database\n');
     
-    let successCount = 0;
-    let failCount = 0;
-    
-    for (const filename of SQL_FILES) {
-      try {
-        const sql = await readSQLFile(filename);
-        const success = await executeSQL(sql, filename);
-        
-        if (success) {
-          successCount++;
-        } else {
-          failCount++;
-        }
-      } catch (error) {
-        console.error(`❌ Failed to process ${filename}:`, error.message);
-        failCount++;
+    try {
+      const sql = await readSQLFile(SQL_FILE);
+      const success = await executeSQL(sql, SQL_FILE);
+      
+      if (success) {
+        console.log('\n' + '='.repeat(60));
+        console.log('📊 Seeding Summary:');
+        console.log('✅ Database setup completed successfully!');
+        console.log('='.repeat(60));
+        console.log('\n🎉 All tables, functions, triggers, and policies have been created.');
+        console.log('\n💡 Next steps:');
+        console.log('   1. Create users via Supabase Dashboard > Auth > Users');
+        console.log('   2. Or use the app\'s sign-up feature');
+        console.log('   3. To set an admin user, run: SELECT public.set_user_admin(\'email@example.com\');');
+        console.log('   4. To fix missing profiles, run: SELECT public.fix_missing_profiles();');
+      } else {
+        console.log('\n⚠️  Database setup failed. Please check the errors above.');
+        console.log('You may need to run the SQL manually in Supabase SQL Editor:');
+        console.log('https://supabase.com/dashboard/project/yatiljvrbvnkxkkgsjyg/sql/new');
       }
-    }
-    
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 Seeding Summary:');
-    console.log(`✅ Successful: ${successCount}`);
-    console.log(`❌ Failed: ${failCount}`);
-    console.log('='.repeat(60));
-    
-    if (failCount === 0) {
-      console.log('\n🎉 Database seeding completed successfully!');
-    } else {
-      console.log('\n⚠️  Some files failed. Please check the errors above.');
-      console.log('You may need to run failed SQL files manually in Supabase SQL Editor:');
+    } catch (error) {
+      console.error(`❌ Failed to process ${SQL_FILE}:`, error.message);
+      console.log('\n📋 Alternative: Run SQL file manually in Supabase SQL Editor');
       console.log('https://supabase.com/dashboard/project/yatiljvrbvnkxkkgsjyg/sql/new');
     }
     

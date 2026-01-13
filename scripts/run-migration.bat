@@ -1,13 +1,13 @@
 @echo off
-REM Emergency Requests Migration Runner (Batch)
-REM Opens Supabase SQL Editor with migration ready to run
+REM Database Migration Runner (Batch)
+REM Opens Supabase SQL Editor with complete database setup ready to run
 
 echo.
-echo 🚀 Emergency Requests Migration Runner
+echo 🚀 Database Migration Runner
 echo.
 
 cd /d "%~dp0\.."
-set SQL_FILE=database\emergency_requests.sql
+set SQL_FILE=database\database.sql
 
 if not exist "%SQL_FILE%" (
     echo ❌ SQL file not found: %SQL_FILE%

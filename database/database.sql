@@ -1,10 +1,10 @@
 -- ============================================================================
 -- RHS ArchAID - Complete Database Setup
 -- ============================================================================
--- This file contains ALL database setup scripts in the correct order
--- Run this ONCE in Supabase SQL Editor to set up your entire database
+-- This is the COMPLETE database setup script for the RHS ArchAID application.
+-- Run this ONCE in Supabase SQL Editor to set up your entire database.
 -- 
--- Location: https://supabase.com/dashboard/project/yatiljvrbvnkxkkgsjyg/sql/new
+-- Location: https://supabase.com/dashboard/project/[YOUR_PROJECT]/sql/new
 -- ============================================================================
 
 -- ============================================================================
@@ -23,13 +23,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   full_name TEXT,
   email TEXT,
+  role TEXT DEFAULT 'student' CHECK (role IN ('student', 'teacher', 'admin', 'member')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
-
--- Add role column (required for admin policies)
-ALTER TABLE public.profiles 
-ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'student' CHECK (role IN ('student', 'teacher', 'admin', 'member'));
 
 -- Enable Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -38,6 +35,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 
 -- Create policy: Users can view their own profile
 CREATE POLICY "Users can view own profile" 
@@ -57,16 +55,30 @@ CREATE POLICY "Users can insert own profile"
   FOR INSERT 
   WITH CHECK (auth.uid() = id);
 
+-- Create policy: Admins can view all profiles
+CREATE POLICY "Admins can view all profiles"
+  ON public.profiles
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() 
+      AND role = 'admin'
+    )
+  );
+
 -- Function to automatically create profile when user signs up
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, email)
+  INSERT INTO public.profiles (id, full_name, email, role)
   VALUES (
     NEW.id,
     NEW.raw_user_meta_data->>'full_name',
-    NEW.email
-  );
+    NEW.email,
+    'student'
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -79,6 +91,7 @@ CREATE TRIGGER on_auth_user_created
 
 -- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS profiles_email_idx ON public.profiles(email);
+CREATE INDEX IF NOT EXISTS profiles_role_idx ON public.profiles(role);
 
 -- ============================================================================
 -- PART 3: EMERGENCY CONTACTS TABLE
@@ -365,10 +378,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Grant execute permissions
-GRANT EXECUTE ON FUNCTION public.generate_otp_code TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.verify_otp_code TO anon, authenticated;
-
 -- Function to get OTP code for an email (for email template)
 CREATE OR REPLACE FUNCTION public.get_latest_otp(p_email TEXT)
 RETURNS TEXT AS $$
@@ -387,7 +396,79 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION public.generate_otp_code TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.verify_otp_code TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_latest_otp TO anon, authenticated;
+
+-- Function to send OTP email via trigger (for automatic OTP on signup)
+CREATE OR REPLACE FUNCTION public.send_otp_email_trigger()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_otp_code TEXT;
+  v_email TEXT;
+  v_name TEXT;
+BEGIN
+  -- Get user email and name
+  v_email := NEW.email;
+  v_name := COALESCE(NEW.raw_user_meta_data->>'full_name', 'User');
+  
+  -- Generate OTP code
+  SELECT public.generate_otp_code(v_email, NEW.id) INTO v_otp_code;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to send OTP when user signs up
+DROP TRIGGER IF EXISTS on_user_signup_send_otp ON auth.users;
+CREATE TRIGGER on_user_signup_send_otp
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  WHEN (NEW.email_confirmed_at IS NULL)
+  EXECUTE FUNCTION public.send_otp_email_trigger();
+
+-- ============================================================================
+-- PART 6: UTILITY FUNCTIONS
+-- ============================================================================
+
+-- Function to create profiles for existing users (if profiles are missing)
+CREATE OR REPLACE FUNCTION public.fix_missing_profiles()
+RETURNS INTEGER AS $$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  INSERT INTO public.profiles (id, full_name, email, role)
+  SELECT 
+    u.id,
+    COALESCE(
+      u.raw_user_meta_data->>'full_name',
+      SPLIT_PART(u.email, '@', 1)
+    ) as full_name,
+    u.email,
+    'student' as role
+  FROM auth.users u
+  WHERE NOT EXISTS (
+    SELECT 1 FROM public.profiles p WHERE p.id = u.id
+  )
+  ON CONFLICT (id) DO NOTHING;
+  
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to set user as admin
+CREATE OR REPLACE FUNCTION public.set_user_admin(p_email TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+  UPDATE public.profiles 
+  SET role = 'admin' 
+  WHERE email = p_email;
+  
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
 -- COMPLETE!
@@ -401,10 +482,9 @@ GRANT EXECUTE ON FUNCTION public.get_latest_otp TO anon, authenticated;
 --   ✅ otp_codes
 --
 -- Next steps:
---   1. Create a test user via Supabase Dashboard > Auth > Users
+--   1. Create users via Supabase Dashboard > Auth > Users
 --   2. Or use the app's sign-up feature
---   3. See CREATE_TEST_USER.md for instructions
+--   3. To set an admin user, run: SELECT public.set_user_admin('email@example.com');
+--   4. To fix missing profiles, run: SELECT public.fix_missing_profiles();
 -- ============================================================================
-
-
 
