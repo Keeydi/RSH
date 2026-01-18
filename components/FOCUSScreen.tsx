@@ -22,8 +22,8 @@ const FOCUSScreen = () => {
   const [flashlightOn, setFlashlightOn] = useState(false);
   const [whistlePlaying, setWhistlePlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [permission, requestPermission] = useCameraPermissions();
   const [torchEnabled, setTorchEnabled] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
   
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -119,19 +119,6 @@ const FOCUSScreen = () => {
 
   const toggleFlashlight = async () => {
     try {
-      // Request permission if not granted
-      if (!permission) {
-        const result = await requestPermission();
-        if (!result.granted) {
-          Alert.alert(
-            'Camera Permission Required',
-            'Camera permission is needed to use the flashlight. Please enable it in settings.',
-            [{text: 'OK'}]
-          );
-          return;
-        }
-      }
-
       if (flashlightOn) {
         // Turn off flashlight
         setFlashlightOn(false);
@@ -141,6 +128,19 @@ const FOCUSScreen = () => {
           strobeIntervalRef.current = null;
         }
       } else {
+        // Request camera permission if not granted (required for flashlight/torch)
+        if (!permission?.granted) {
+          const result = await requestPermission();
+          if (!result.granted) {
+            Alert.alert(
+              'Camera Permission Required',
+              'Camera permission is needed to use the flashlight feature for emergency signaling.',
+              [{text: 'OK'}]
+            );
+            return;
+          }
+        }
+
         // Turn on flashlight with strobe effect
         setFlashlightOn(true);
         setTorchEnabled(true);
@@ -164,10 +164,9 @@ const FOCUSScreen = () => {
       }
     } catch (error) {
       console.error('Flashlight error:', error);
-      Alert.alert(
-        'Flashlight Error',
-        'Unable to control flashlight. Make sure your device has a flashlight and camera permission is granted.'
-      );
+      Alert.alert('Error', 'Failed to toggle flashlight. Please try again.');
+      setFlashlightOn(false);
+      setTorchEnabled(false);
     }
   };
 
@@ -388,9 +387,6 @@ const FOCUSScreen = () => {
               {flashlightOn && (
                 <Text className="text-xs text-gray-600 mt-1">Strobe Active</Text>
               )}
-              {permission && !permission.granted && (
-                <Text className="text-xs text-red-600 mt-1">Permission Needed</Text>
-              )}
             </TouchableOpacity>
             <TouchableOpacity
               onPress={playWhistle}
@@ -457,7 +453,7 @@ const FOCUSScreen = () => {
         </View>
       </ScrollView>
       
-      {/* Hidden Camera for Flashlight Control */}
+      {/* Hidden Camera for Flashlight Control - Only render if permission granted */}
       {permission?.granted && (
         <CameraView
           ref={cameraRef}

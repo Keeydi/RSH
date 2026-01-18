@@ -363,25 +363,54 @@ const LearnScreen = () => {
         </View>
 
         {/* Emergency Guides */}
-        <View className="px-6 py-6">
-          <Text className="text-gray-800 text-xl font-bold mb-4">Emergency Guides</Text>
-          {emergencyGuides.map(guide => (
-            <TouchableOpacity
-              key={guide.id}
-              onPress={() => setSelectedGuide(guide)}
-              className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-200">
-              <View className="flex-row items-center">
-                <Text className="text-4xl mr-4">{guide.icon}</Text>
-                <View className="flex-1">
-                  <Text className="text-gray-800 font-bold text-lg mb-1">{guide.type}</Text>
-                  <Text className="text-gray-600 text-sm">
-                    {guide.steps.length} steps • Tap to view guide
-                  </Text>
+        <View style={{paddingHorizontal: 24, paddingVertical: 24}} className="px-6 py-6">
+          <Text style={{color: '#1F2937', fontSize: 20, fontWeight: 'bold', marginBottom: 16}} className="text-gray-800 text-xl font-bold mb-4">
+            Emergency Guides
+          </Text>
+          {emergencyGuides && emergencyGuides.length > 0 ? (
+            emergencyGuides.map(guide => (
+              <TouchableOpacity
+                key={guide.id}
+                onPress={() => setSelectedGuide(guide)}
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                }}
+                className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-200">
+                <View style={{flexDirection: 'row', alignItems: 'center'}} className="flex-row items-center">
+                  <Text style={{fontSize: 36, marginRight: 16}} className="text-4xl mr-4">{guide.icon}</Text>
+                  <View style={{flex: 1}} className="flex-1">
+                    <Text style={{color: '#1F2937', fontWeight: 'bold', fontSize: 18, marginBottom: 4}} className="text-gray-800 font-bold text-lg mb-1">
+                      {guide.type}
+                    </Text>
+                    <Text style={{color: '#4B5563', fontSize: 14}} className="text-gray-600 text-sm">
+                      {guide.steps.length} steps • Tap to view guide
+                    </Text>
+                  </View>
+                  <Text style={{color: '#9CA3AF', fontSize: 20}} className="text-gray-400 text-xl">›</Text>
                 </View>
-                <Text className="text-gray-400 text-xl">›</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={{
+              backgroundColor: '#FEF3C7',
+              borderWidth: 1,
+              borderColor: '#FDE68A',
+              borderRadius: 12,
+              padding: 16,
+            }} className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+              <Text style={{color: '#92400E', fontWeight: '600', fontSize: 16, marginBottom: 8}} className="text-yellow-800 font-semibold text-base mb-2">
+                No Emergency Guides Available
+              </Text>
+              <Text style={{color: '#B45309', fontSize: 14}} className="text-yellow-700 text-sm">
+                Emergency guides are loading. Please refresh the app.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Drill Practice */}
@@ -442,13 +471,14 @@ const LearnScreen = () => {
                 maxHeight: '90%',
                 width: '100%',
               }}>
-              <SafeAreaView edges={['bottom']}>
+              <SafeAreaView edges={['bottom']} style={{flex: 1}}>
                 <ScrollView
-                  style={{maxHeight: '85%'}}
+                  style={{flex: 1}}
+                  contentContainerStyle={{padding: 24, paddingBottom: 32}}
                   showsVerticalScrollIndicator={true}
                   bounces={false}>
                   {selectedGuide && (
-                    <View style={{padding: 24}}>
+                    <View>
                       {/* Modal Header */}
                       <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 24}}>
                         <Text style={{fontSize: 48, marginRight: 16}}>

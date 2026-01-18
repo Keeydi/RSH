@@ -23,6 +23,8 @@
       }
     },
     "android": {
+      "package": "com.rhs.archaid",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },
@@ -32,6 +34,11 @@
         "CAMERA",
         "INTERNET"
       ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "17ffbdb0-734a-4029-a723-3b37daecc2a9"
+      }
     }
   }
 }
