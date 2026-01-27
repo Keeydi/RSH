@@ -1,12 +1,10 @@
-import React, {useState} from 'react';
+import React, {useState, useMemo, useCallback} from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {theme} from '../config/theme';
@@ -26,13 +24,8 @@ interface EmergencyGuide {
   checklist: ChecklistItem[];
 }
 
-const LearnScreen = () => {
-  const [selectedGuide, setSelectedGuide] = useState<EmergencyGuide | null>(null);
-  const [drillMode, setDrillMode] = useState(false);
-  const [drillStep, setDrillStep] = useState(0);
-  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
-
-  const emergencyGuides: EmergencyGuide[] = [
+// Define emergencyGuides outside component to ensure it's always available in production builds
+const emergencyGuides: EmergencyGuide[] = [
     {
       id: 'fire',
       type: 'Fire',
@@ -168,51 +161,82 @@ const LearnScreen = () => {
     },
   ];
 
-  const startDrill = (guide: EmergencyGuide) => {
-    setSelectedGuide(guide);
-    setDrillMode(true);
-    setDrillStep(0);
-    setChecklist(guide.checklist.map(item => ({...item, completed: false})));
-  };
+// Helper function to get full guide data from emergencyGuides array
+const getFullGuide = (guideId: string): EmergencyGuide | null => {
+  return emergencyGuides.find(g => g.id === guideId) || null;
+};
 
-  const completeChecklistItem = (id: string) => {
+const LearnScreen = () => {
+  const [selectedGuide, setSelectedGuide] = useState<EmergencyGuide | null>(null);
+  const [drillMode, setDrillMode] = useState(false);
+  const [drillStep, setDrillStep] = useState(0);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+
+  const startDrill = useCallback((guide: EmergencyGuide) => {
+    const fullGuide = getFullGuide(guide.id) || guide;
+    if (fullGuide?.steps?.length > 0) {
+      setSelectedGuide(fullGuide);
+      setDrillMode(true);
+      setDrillStep(0);
+      setChecklist(fullGuide.checklist?.map(item => ({...item, completed: false})) || []);
+    }
+  }, []);
+
+  const completeChecklistItem = useCallback((id: string) => {
     setChecklist(prev =>
       prev.map(item => (item.id === id ? {...item, completed: !item.completed} : item))
     );
-  };
+  }, []);
 
-  const nextDrillStep = () => {
+  const nextDrillStep = useCallback(() => {
     if (selectedGuide && drillStep < selectedGuide.steps.length - 1) {
       setDrillStep(drillStep + 1);
     } else {
-      // Drill complete
       setDrillMode(false);
       setDrillStep(0);
     }
-  };
+  }, [selectedGuide, drillStep]);
 
-  const resetDrill = () => {
+  const resetDrill = useCallback(() => {
     setDrillMode(false);
     setDrillStep(0);
     setSelectedGuide(null);
     setChecklist([]);
-  };
+  }, []);
 
-  if (drillMode && selectedGuide) {
-    // Calculate progress based on completed checklist items
+  const handleGuideSelect = useCallback((guide: EmergencyGuide) => {
+    const fullGuide = getFullGuide(guide.id);
+    if (fullGuide?.steps?.length > 0) {
+      setSelectedGuide(fullGuide);
+    } else if (guide?.steps?.length > 0) {
+      setSelectedGuide(guide);
+    }
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setSelectedGuide(null);
+  }, []);
+
+  // Memoize drill calculations
+  const drillStats = useMemo(() => {
+    if (!selectedGuide || !drillMode) return null;
+    
     const completedCount = checklist.filter(item => item.completed).length;
     const totalChecklistItems = checklist.length;
     const progress = totalChecklistItems > 0 ? completedCount / totalChecklistItems : 0;
-    
-    // Find the first incomplete checklist item to determine which step to show
     const firstIncompleteIndex = checklist.findIndex(item => !item.completed);
-    const currentStepIndex = firstIncompleteIndex >= 0 
-      ? Math.min(firstIncompleteIndex, selectedGuide.steps.length - 1)
-      : selectedGuide.steps.length - 1;
     
-    // Show step answer only if the corresponding checklist item is completed
-    // Or show all completed steps
-    const showStepAnswer = firstIncompleteIndex > 0 || completedCount === totalChecklistItems;
+    return {
+      completedCount,
+      totalChecklistItems,
+      progress,
+      firstIncompleteIndex,
+      isComplete: completedCount === totalChecklistItems,
+    };
+  }, [checklist, selectedGuide, drillMode]);
+
+  if (drillMode && selectedGuide && drillStats) {
+    const {completedCount, totalChecklistItems, progress, isComplete} = drillStats;
 
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
@@ -231,9 +255,9 @@ const LearnScreen = () => {
                 <Text className="text-gray-800 font-bold text-base mb-3">
                   Completed Steps ({completedCount}/{totalChecklistItems})
                 </Text>
-                {checklist.map((item, index) => {
-                  if (!item.completed || index >= selectedGuide.steps.length) return null;
-                  return (
+                {checklist
+                  .filter((item, index) => item.completed && index < selectedGuide.steps.length)
+                  .map((item, index) => (
                     <View key={item.id} className="mb-3 pb-3 border-b border-gray-100">
                       <View className="flex-row items-start mb-2">
                         <View className="w-6 h-6 rounded-full bg-green-500 items-center justify-center mr-3 mt-1">
@@ -250,8 +274,7 @@ const LearnScreen = () => {
                         </View>
                       </View>
                     </View>
-                  );
-                })}
+                  ))}
               </View>
             )}
 
@@ -313,7 +336,7 @@ const LearnScreen = () => {
                         {item.text}
                       </Text>
                     </TouchableOpacity>
-                    {showStepForItem && (
+                    {showStepForItem && selectedGuide.steps[index] && (
                       <View className="ml-9 mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <Text className="text-blue-800 text-xs font-semibold mb-1">
                           Step {index + 1} Answer:
@@ -359,54 +382,42 @@ const LearnScreen = () => {
         {/* Header - Logo Colors */}
         <View style={{backgroundColor: theme.primary.main}} className="px-6 py-4">
           <Text className="text-white text-2xl font-bold mb-1">Learn & Practice</Text>
-          <Text style={{color: '#FFE5D9'}} className="text-sm">Emergency guides and drill practice</Text>
+          <Text style={{color: '#FFE5D9'}} className="text-sm">
+            Emergency guides and drill practice
+          </Text>
         </View>
 
         {/* Emergency Guides */}
-        <View style={{paddingHorizontal: 24, paddingVertical: 24}} className="px-6 py-6">
-          <Text style={{color: '#1F2937', fontSize: 20, fontWeight: 'bold', marginBottom: 16}} className="text-gray-800 text-xl font-bold mb-4">
+        <View className="px-6 py-6">
+          <Text className="text-gray-800 text-xl font-bold mb-4">
             Emergency Guides
           </Text>
-          {emergencyGuides && emergencyGuides.length > 0 ? (
+          {emergencyGuides?.length > 0 ? (
             emergencyGuides.map(guide => (
               <TouchableOpacity
                 key={guide.id}
-                onPress={() => setSelectedGuide(guide)}
-                style={{
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 12,
-                  padding: 16,
-                  marginBottom: 12,
-                  borderWidth: 1,
-                  borderColor: '#E5E7EB',
-                }}
+                onPress={() => handleGuideSelect(guide)}
                 className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-200">
-                <View style={{flexDirection: 'row', alignItems: 'center'}} className="flex-row items-center">
-                  <Text style={{fontSize: 36, marginRight: 16}} className="text-4xl mr-4">{guide.icon}</Text>
-                  <View style={{flex: 1}} className="flex-1">
-                    <Text style={{color: '#1F2937', fontWeight: 'bold', fontSize: 18, marginBottom: 4}} className="text-gray-800 font-bold text-lg mb-1">
+                <View className="flex-row items-center">
+                  <Text className="text-4xl mr-4">{guide.icon}</Text>
+                  <View className="flex-1">
+                    <Text className="text-gray-800 font-bold text-lg mb-1">
                       {guide.type}
                     </Text>
-                    <Text style={{color: '#4B5563', fontSize: 14}} className="text-gray-600 text-sm">
-                      {guide.steps.length} steps • Tap to view guide
+                    <Text className="text-gray-600 text-sm">
+                      {guide.steps?.length || 0} steps • Tap to view guide
                     </Text>
                   </View>
-                  <Text style={{color: '#9CA3AF', fontSize: 20}} className="text-gray-400 text-xl">›</Text>
+                  <Text className="text-gray-400 text-xl">›</Text>
                 </View>
               </TouchableOpacity>
             ))
           ) : (
-            <View style={{
-              backgroundColor: '#FEF3C7',
-              borderWidth: 1,
-              borderColor: '#FDE68A',
-              borderRadius: 12,
-              padding: 16,
-            }} className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-              <Text style={{color: '#92400E', fontWeight: '600', fontSize: 16, marginBottom: 8}} className="text-yellow-800 font-semibold text-base mb-2">
+            <View className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+              <Text className="text-yellow-800 font-semibold text-base mb-2">
                 No Emergency Guides Available
               </Text>
-              <Text style={{color: '#B45309', fontSize: 14}} className="text-yellow-700 text-sm">
+              <Text className="text-yellow-700 text-sm">
                 Emergency guides are loading. Please refresh the app.
               </Text>
             </View>
@@ -446,9 +457,8 @@ const LearnScreen = () => {
           visible={selectedGuide !== null && !drillMode}
           transparent={true}
           animationType="slide"
-          onRequestClose={() => setSelectedGuide(null)}>
+          onRequestClose={closeModal}>
           <View style={{flex: 1, justifyContent: 'flex-end'}}>
-            {/* Backdrop */}
             <TouchableOpacity
               style={{
                 position: 'absolute',
@@ -459,10 +469,8 @@ const LearnScreen = () => {
                 backgroundColor: 'rgba(0, 0, 0, 0.5)',
               }}
               activeOpacity={1}
-              onPress={() => setSelectedGuide(null)}
+              onPress={closeModal}
             />
-            
-            {/* Modal Content */}
             <View
               style={{
                 backgroundColor: '#FFFFFF',
@@ -479,18 +487,12 @@ const LearnScreen = () => {
                   bounces={false}>
                   {selectedGuide && (
                     <View>
-                      {/* Modal Header */}
                       <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 24}}>
                         <Text style={{fontSize: 48, marginRight: 16}}>
                           {selectedGuide.icon}
                         </Text>
                         <View style={{flex: 1}}>
-                          <Text
-                            style={{
-                              color: '#1F2937',
-                              fontSize: 24,
-                              fontWeight: 'bold',
-                            }}>
+                          <Text style={{color: '#1F2937', fontSize: 24, fontWeight: 'bold'}}>
                             {selectedGuide.type}
                           </Text>
                           <Text style={{color: '#6B7280', fontSize: 14}}>
@@ -498,7 +500,7 @@ const LearnScreen = () => {
                           </Text>
                         </View>
                         <TouchableOpacity
-                          onPress={() => setSelectedGuide(null)}
+                          onPress={closeModal}
                           style={{
                             width: 40,
                             height: 40,
@@ -509,100 +511,75 @@ const LearnScreen = () => {
                         </TouchableOpacity>
                       </View>
 
-                      {/* Steps */}
-                      <Text
-                        style={{
-                          color: '#1F2937',
-                          fontSize: 16,
-                          fontWeight: 'bold',
-                          marginBottom: 16,
-                        }}>
+                      <Text style={{color: '#1F2937', fontSize: 16, fontWeight: 'bold', marginBottom: 16}}>
                         Steps:
                       </Text>
-                      {selectedGuide.steps.map((step, index) => (
-                        <View
-                          key={index}
-                          style={{
-                            flexDirection: 'row',
-                            marginBottom: 16,
-                            alignItems: 'flex-start',
-                          }}>
+                      {selectedGuide.steps?.length > 0 ? (
+                        selectedGuide.steps.map((step, index) => (
                           <View
+                            key={`step-${index}`}
                             style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 16,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginRight: 12,
-                              marginTop: 4,
-                              backgroundColor: selectedGuide.color,
+                              flexDirection: 'row',
+                              marginBottom: 16,
+                              alignItems: 'flex-start',
                             }}>
-                            <Text
+                            <View
                               style={{
-                                color: '#FFFFFF',
-                                fontSize: 12,
-                                fontWeight: 'bold',
+                                width: 32,
+                                height: 32,
+                                borderRadius: 16,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginRight: 12,
+                                marginTop: 4,
+                                backgroundColor: selectedGuide.color || theme.primary.main,
                               }}>
-                              {index + 1}
+                              <Text style={{color: '#FFFFFF', fontSize: 12, fontWeight: 'bold'}}>
+                                {index + 1}
+                              </Text>
+                            </View>
+                            <Text style={{flex: 1, color: '#374151', fontSize: 16, lineHeight: 24}}>
+                              {step}
                             </Text>
                           </View>
-                          <Text
-                            style={{
-                              flex: 1,
-                              color: '#374151',
-                              fontSize: 16,
-                              lineHeight: 24,
-                            }}>
-                            {step}
+                        ))
+                      ) : (
+                        <View style={{
+                          backgroundColor: '#FEF3C7',
+                          borderWidth: 1,
+                          borderColor: '#FDE68A',
+                          borderRadius: 12,
+                          padding: 16,
+                          marginBottom: 16,
+                        }}>
+                          <Text style={{color: '#92400E', fontWeight: '600', fontSize: 14}}>
+                            No steps available for this guide. Please try again.
                           </Text>
                         </View>
-                      ))}
+                      )}
 
-                      {/* Action Buttons */}
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          marginTop: 24,
-                          gap: 12,
-                        }}>
+                      <View style={{flexDirection: 'row', marginTop: 24, gap: 12}}>
                         <TouchableOpacity
-                          onPress={() => setSelectedGuide(null)}
+                          onPress={closeModal}
                           style={{
                             flex: 1,
                             backgroundColor: '#E5E7EB',
                             borderRadius: 12,
                             padding: 16,
                           }}>
-                          <Text
-                            style={{
-                              color: '#1F2937',
-                              fontWeight: 'bold',
-                              textAlign: 'center',
-                              fontSize: 16,
-                            }}>
+                          <Text style={{color: '#1F2937', fontWeight: 'bold', textAlign: 'center', fontSize: 16}}>
                             Close
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          onPress={() => {
-                            if (selectedGuide) {
-                              startDrill(selectedGuide);
-                            }
-                          }}
+                          onPress={() => selectedGuide?.steps?.length > 0 && startDrill(selectedGuide)}
                           style={{
                             flex: 1,
                             borderRadius: 12,
                             padding: 16,
-                            backgroundColor: selectedGuide.color,
+                            backgroundColor: selectedGuide.color || theme.primary.main,
                           }}>
-                          <Text
-                            style={{
-                              color: '#FFFFFF',
-                              fontWeight: 'bold',
-                              textAlign: 'center',
-                              fontSize: 16,
-                            }}>
+                          <Text style={{color: '#FFFFFF', fontWeight: 'bold', textAlign: 'center', fontSize: 16}}>
                             Start Practice Drill
                           </Text>
                         </TouchableOpacity>
