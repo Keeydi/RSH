@@ -975,7 +975,7 @@ const MapScreen = () => {
           {/* Quick Actions Button - Removed relocation sites toggle (focus on school campus only) */}
         </View>
 
-        {/* Collapsible Bottom Info Panel */}
+        {/* Collapsible Bottom Info Panel - tap to show/hide map information */}
         <View 
           style={[
             styles.bottomPanel,
@@ -985,7 +985,9 @@ const MapScreen = () => {
           <TouchableOpacity
             onPress={() => setIsPanelCollapsed(!isPanelCollapsed)}
             style={styles.collapseButton}
-            activeOpacity={0.7}>
+            activeOpacity={0.7}
+            accessibilityLabel={isPanelCollapsed ? 'Show info' : 'Hide info'}
+            accessibilityRole="button">
             <Text style={styles.collapseButtonText}>
               {isPanelCollapsed ? '▲ Show Info' : '▼ Hide Info'}
             </Text>
@@ -993,7 +995,7 @@ const MapScreen = () => {
 
           {!isPanelCollapsed && (
             <ScrollView 
-              style={styles.panelScrollView}
+              style={[styles.panelScrollView, {minHeight: 120}]}
               contentContainerStyle={styles.panelContent}
               showsVerticalScrollIndicator={true}
               bounces={false}>
